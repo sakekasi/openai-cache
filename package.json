@@ -1,0 +1,21 @@
+{
+  "name": "openai-cache",
+  "version": "1.0.0",
+  "description": "A local server that proxies requests to the gpt-3 apis, caching their results in redis to save money.",
+  "main": "src/index.ts",
+  "repository": "git@github.com:sakekasi/openai-cache.git",
+  "author": "Saketh Kasibatla <sake.kasi@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^18.15.0",
+    "typescript": "^4.9.5"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1"
+  },
+  "scripts": {
+    "start": "node src/index.ts",
+    "dev": "ts-node src/index.ts",
+    "build": "tsc"
+  }
+}
