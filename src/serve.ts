@@ -1,7 +1,7 @@
 import express from "express";
 import { complete, embed } from "./openai";
 import { z } from "zod";
-import { isModelName } from "./utils";
+import { isCompletionModelName, isEmbeddingModelName, isModelName } from "./utils";
 
 export function serve(port: number): void {
   const app = express();
@@ -11,7 +11,7 @@ export function serve(port: number): void {
   });
 
   const completeSchema = z.object({
-    model: z.string().refine(isModelName),
+    model: z.string().refine(isCompletionModelName),
     prompt: z.string().nonempty(),
     maxTokens: z.number().int().positive().optional(),
     temperature: z.number().positive().gte(0).lte(2).optional(),
@@ -39,7 +39,7 @@ export function serve(port: number): void {
   });
 
   const embedSchema = z.object({
-    model: z.string().refine(isModelName),
+    model: z.string().refine(isEmbeddingModelName),
     texts: z.string().transform((s) => s.split(",")),
   });
   app.get("/embed", async (req, res, next) => {

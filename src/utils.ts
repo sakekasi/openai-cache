@@ -1,4 +1,23 @@
-export const MODEL_NAMES = ["text-embedding-ada-002", "text-ada-001"] as const;
+export const EMBEDDING_MODEL_NAMES = ["text-embedding-ada-002"] as const;
+export type EmbeddingModelName = typeof EMBEDDING_MODEL_NAMES[number];
+export function isEmbeddingModelName(
+  model: string
+): model is EmbeddingModelName {
+  return EMBEDDING_MODEL_NAMES.includes(model as EmbeddingModelName);
+}
+
+export const COMPLETION_MODEL_NAMES = ["text-ada-001"] as const;
+export type CompletionModelName = typeof COMPLETION_MODEL_NAMES[number];
+export function isCompletionModelName(
+  model: string
+): model is CompletionModelName {
+  return COMPLETION_MODEL_NAMES.includes(model as CompletionModelName);
+}
+
+export const MODEL_NAMES = [
+    ...EMBEDDING_MODEL_NAMES,
+    ...COMPLETION_MODEL_NAMES,
+] as const;
 export type ModelName = typeof MODEL_NAMES[number];
 export function isModelName(model: string): model is ModelName {
   return MODEL_NAMES.includes(model as ModelName);

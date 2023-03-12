@@ -7,6 +7,7 @@ import {
   ModelName,
   Embedding,
   cost,
+  EmbeddingModelName,
 } from "./utils";
 
 const SCHEMA = `
@@ -172,7 +173,7 @@ export async function getRequestFromCache(
 
 export interface DBEmbeddingRow {
   text_hash: string;
-  model: string;
+  model: EmbeddingModelName;
   created_at: string;
 
   text: string;
@@ -181,7 +182,7 @@ export interface DBEmbeddingRow {
 
 export async function addEmbeddingToCache(
   text: string,
-  model: ModelName,
+  model: EmbeddingModelName,
   embedding: Embedding
 ): Promise<void> {
   const db = await ensureDB();
@@ -215,7 +216,7 @@ export async function addEmbeddingToCache(
 
 export async function getEmbeddingFromCache(
   text: string,
-  model: ModelName
+  model: EmbeddingModelName
 ): Promise<
   (Omit<DBEmbeddingRow, "embedding"> & { embedding: Embedding }) | null
 > {
@@ -248,7 +249,7 @@ export async function getEmbeddingFromCache(
 export interface DBLogRow {
   time: string;
   request_type: "completion" | "embedding";
-  model: string;
+  model: ModelName;
 
   tokens: number;
   cost: number;

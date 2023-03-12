@@ -12,7 +12,7 @@ import {
   getEmbeddingFromCache,
   getRequestFromCache,
 } from "./db";
-import { asyncForEachParallel, asyncMap, ModelName, notNull } from "./utils";
+import { asyncForEachParallel, asyncMap, CompletionModelName, EmbeddingModelName, ModelName, notNull } from "./utils";
 
 const configuration = new Configuration({
   apiKey: config.openaiApiKey,
@@ -24,7 +24,7 @@ interface MyCreateCompletionRequest extends CreateCompletionRequest {
 }
 
 export async function complete(
-  model: ModelName,
+  model: CompletionModelName,
   prompt: string,
   options: {
     maxTokens?: number;
@@ -68,7 +68,7 @@ export async function complete(
 
 // createEmbedding
 // https://platform.openai.com/docs/api-reference/embeddings
-export async function embed(model: ModelName, texts: string[]) {
+export async function embed(model: EmbeddingModelName, texts: string[]) {
   const cachedEmbeddings = (
     await asyncMap(texts, (text) => getEmbeddingFromCache(text, model))
   ).filter(notNull);
