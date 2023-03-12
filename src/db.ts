@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS "log_time" ON "log" ("time");
 CREATE INDEX IF NOT EXISTS "log_request_type" ON "log" ("request_type");
 CREATE INDEX IF NOT EXISTS "log_model" ON "log" ("model");
 
-CREATE TABLE IF NOT EXISTS "requests" (
+CREATE TABLE IF NOT EXISTS "request" (
     "request_hash" TEXT NOT NULL UNIQUE,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -41,10 +41,10 @@ CREATE TABLE IF NOT EXISTS "requests" (
     PRIMARY KEY("request_hash")
 );
 
-CREATE INDEX IF NOT EXISTS "requests_created_at" ON "requests" ("created_at");
-CREATE INDEX IF NOT EXISTS "requests_request_type" ON "requests" ("request_type");
+CREATE INDEX IF NOT EXISTS "request_created_at" ON "request" ("created_at");
+CREATE INDEX IF NOT EXISTS "request_request_type" ON "request" ("request_type");
   
-CREATE TABLE IF NOT EXISTS "embeddings" (
+CREATE TABLE IF NOT EXISTS "embedding" (
     "text_hash" TEXT NOT NULL,
     "model" TEXT NOT NULL,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS "embeddings" (
     PRIMARY KEY("text_hash", "model")
 );
 
-CREATE INDEX IF NOT EXISTS "embeddings_created_at" ON "embeddings" ("created_at");
-CREATE INDEX IF NOT EXISTS "embeddings_model" ON "embeddings" ("model");
+CREATE INDEX IF NOT EXISTS "embedding_created_at" ON "embedding" ("created_at");
+CREATE INDEX IF NOT EXISTS "embedding_model" ON "embedding" ("model");
 
 `;
 
@@ -74,7 +74,7 @@ async function migrate(db: IDatabase) {
   await db.exec(SCHEMA);
 }
 
-// #region requests
+// #region request
 
 export interface DBRequestRow {
   request_hash: string;
@@ -124,7 +124,7 @@ export async function addRequestToCache(
   };
 
   const stmt = db.prepare(`
-        INSERT INTO "requests" (
+        INSERT INTO "request" (
             "request_hash",
             "request_type",
             "request_json",
@@ -155,7 +155,7 @@ export async function getRequestFromCache(
   const db = await ensureDB();
 
   const stmt = db.prepare<{ request_hash: string }>(`
-        SELECT * FROM "requests"
+        SELECT * FROM "request"
         WHERE "request_hash" = @request_hash
     `);
   const row: DBRequestRow = stmt.get({ request_hash: hash(request) });
@@ -167,9 +167,9 @@ export async function getRequestFromCache(
   return row;
 }
 
-// #endregion requests
+// #endregion request
 
-// #region embeddings
+// #region embedding
 
 export interface DBEmbeddingRow {
   text_hash: string;
@@ -195,7 +195,7 @@ export async function addEmbeddingToCache(
   };
 
   const stmt = db.prepare(`
-        INSERT INTO "embeddings" (
+        INSERT INTO "embedding" (
             "text_hash",
             "model",
             "text",
@@ -223,7 +223,7 @@ export async function getEmbeddingFromCache(
   const db = await ensureDB();
 
   const stmt = db.prepare<{ text_hash: string; model: string }>(`
-        SELECT * FROM "embeddings"
+        SELECT * FROM "embedding"
         WHERE "text_hash" = @text_hash AND "model" = @model
     `);
   const rows = stmt.all({ text_hash: md5(text), model });
@@ -242,7 +242,7 @@ export async function getEmbeddingFromCache(
   };
 }
 
-// #endregion embeddings
+// #endregion embedding
 
 // #region log
 
