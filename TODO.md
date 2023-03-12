@@ -1,2 +1,0 @@
-- [ ] setup simple forwarding
-- [ ] create redis access cache
