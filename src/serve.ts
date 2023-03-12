@@ -1,33 +1,60 @@
 import express from "express";
-import { complete, embed } from "./openai";
 import { z } from "zod";
-import { isCompletionModelName, isEmbeddingModelName, isModelName } from "./utils";
+import { complete, embed } from "./openai";
+import { isCompletionModelName, isEmbeddingModelName } from "./utils";
 
-export function serve(port: number): void {
+export function makeServer(): express.Express {
   const app = express();
 
   app.get("/ping", (req, res) => {
     res.send("pong");
   });
 
+  const maxTokensSchema = z.number().positive().int();
+  const temperatureSchema = z.number().positive().gte(0).lte(2);
+  const logprobsSchema = z.number().positive().int().lte(5);
   const completeSchema = z.object({
     model: z.string().refine(isCompletionModelName),
     prompt: z.string().nonempty(),
-    maxTokens: z.number().int().positive().optional(),
-    temperature: z.number().positive().gte(0).lte(2).optional(),
-    logprobs: z.number().int().positive().lte(5).optional(),
+    maxTokens: z
+      .string()
+      .optional()
+      .transform((s) => {
+        if (s == null) {
+          return undefined;
+        }
+        return maxTokensSchema.parse(parseInt(s));
+      }),
+    temperature: z
+      .string()
+      .optional()
+      .transform((s) => {
+        if (s == null) {
+          return undefined;
+        }
+        return temperatureSchema.parse(parseFloat(s));
+      }),
+    logprobs: z
+      .string()
+      .optional()
+      .transform((s) => {
+        if (s == null) {
+          return undefined;
+        }
+        return logprobsSchema.parse(parseInt(s));
+      }),
   });
   app.get("/complete", async (req, res, next) => {
     try {
       const { model, prompt, maxTokens, temperature, logprobs } =
         completeSchema.parse(req.query);
-  
+
       const completion = await complete(model, prompt, {
         maxTokens,
         temperature,
         logprobs,
       });
-  
+
       res.send(completion);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -40,7 +67,11 @@ export function serve(port: number): void {
 
   const embedSchema = z.object({
     model: z.string().refine(isEmbeddingModelName),
-    texts: z.string().transform((s) => s.split(",")),
+    texts: z
+      .string()
+      .nonempty()
+      .transform((s) => JSON.parse(s))
+      .refine((a) => Array.isArray(a) && a.every((s) => typeof s === "string")),
   });
   app.get("/embed", async (req, res, next) => {
     try {
@@ -62,8 +93,5 @@ export function serve(port: number): void {
     res.status(500).send(err.message);
   });
 
-
-  app.listen(port, () => {
-    console.log(`Listening on port ${port}`);
-  });
+  return app;
 }

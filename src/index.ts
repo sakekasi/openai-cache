@@ -1,23 +1,15 @@
 import { config } from "./config";
 import { complete, embed } from "./openai";
-import { serve } from "./serve";
+import { makeServer } from "./serve";
 
-export { complete, embed, serve };
+export { complete, embed, makeServer };
 
 
 async function main() {
-    serve(config.port)
-    // console.log('Hello World!');
-    // const completion = await complete('text-ada-001', 'console.log("hello', {
-    //     maxTokens: 10
-    // });
-    // console.log('prompt: "', 'console.log("hello', '"');
-    // console.log('completion: "', completion.choices[0].text, '"');
-    
-    // const embeddings = await embed('text-embedding-ada-002', ['Hello']);
-    // console.log('input: "', 'Hello', '"');
-    // console.log('embedding: "', embeddings[0].embedding, '"');
-
+    const server = makeServer();
+    server.listen(config.port, () => {
+        console.log(`Listening on port ${config.port}`);
+    });
 }
 if (require.main === module) {
     main();
