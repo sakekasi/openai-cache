@@ -1,0 +1,1 @@
+- add an optional "attempt_id" so that all attempts at completing a prompt are saved w/ a uuid, even if we bypass the cache
