@@ -303,3 +303,5 @@ export async function addLogEntry(
     throw new Error(`Failed to create log entry`);
   }
 }
+
+// #endregion log
