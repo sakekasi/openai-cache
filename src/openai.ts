@@ -7,6 +7,7 @@ import {
 import { config } from "./config";
 import {
     addEmbeddingToCache,
+  addLogEntry,
   addRequestToCache,
   getEmbeddingFromCache,
   getRequestFromCache,
@@ -58,6 +59,9 @@ export async function complete(
   }
 
   addRequestToCache("completion", request, response.data);
+  if (response.data.usage?.total_tokens != null) {
+    addLogEntry('completion', model, response.data.usage?.total_tokens);
+  }
 
   return response.data;
 }
@@ -77,16 +81,16 @@ export async function embed(model: ModelName, texts: string[]) {
     return cachedEmbeddings;
   }
 
-  const result = await openai.createEmbedding({
+  const response = await openai.createEmbedding({
     model,
     input: uncachedEmbeddings,
   });
 
-  if (result.status !== 200) {
-    throw new Error(`Failed to create embedding: ${result.statusText}`);
+  if (response.status !== 200) {
+    throw new Error(`Failed to create embedding: ${response.statusText}`);
   }
 
-  const embeddings = result.data.data.map(({ embedding, index }) => ({
+  const embeddings = response.data.data.map(({ embedding, index }) => ({
     text: uncachedEmbeddings[index],
     embedding,
   }));
@@ -94,6 +98,9 @@ export async function embed(model: ModelName, texts: string[]) {
   await asyncForEachParallel(embeddings, ({ text, embedding }) =>
     addEmbeddingToCache(text, model, embedding)
   );
+  if (response.data.usage?.total_tokens != null) {
+    addLogEntry('embedding', model, response.data.usage?.total_tokens);
+  }
 
   return [...cachedEmbeddings, ...embeddings];
 }

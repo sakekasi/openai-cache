@@ -1,9 +1,29 @@
 import Database, { Database as IDatabase } from "better-sqlite3";
 import { config } from "./config";
 import md5 from "md5";
-import { embeddingFromBuffer, embeddingToBuffer, ModelName } from "./utils";
+import {
+  embeddingFromBuffer,
+  embeddingToBuffer,
+  ModelName,
+  Embedding,
+  cost,
+} from "./utils";
 
 const SCHEMA = `
+
+CREATE TABLE IF NOT EXISTS "log" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "time" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  "request_type" TEXT NOT NULL,
+  "tokens" INTEGER NOT NULL,
+  "model" TEXT NOT NULL,
+  "cost" INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS "log_time" ON "log" ("time");
+CREATE INDEX IF NOT EXISTS "log_request_type" ON "log" ("request_type");
+CREATE INDEX IF NOT EXISTS "log_model" ON "log" ("model");
 
 CREATE TABLE IF NOT EXISTS "requests" (
     "request_hash" TEXT NOT NULL UNIQUE,
@@ -99,7 +119,7 @@ export async function addRequestToCache(
 
     tokens: response.usage?.total_tokens ?? null,
     model: request.model,
-    cost: 0, // TODO: calculate cost properly
+    cost: cost(request.model, response.usage?.total_tokens ?? 0),
   };
 
   const stmt = db.prepare(`
@@ -219,4 +239,51 @@ export async function getEmbeddingFromCache(
     text: rows[0].text,
     embedding: embeddingFromBuffer(rows[0].embedding),
   };
+}
+
+// #endregion embeddings
+
+// #region log
+
+export interface DBLogRow {
+  time: string;
+  request_type: "completion" | "embedding";
+  model: string;
+
+  tokens: number;
+  cost: number;
+}
+
+export async function addLogEntry(
+  type: DBLogRow["request_type"],
+  model: ModelName,
+  tokens: number
+) {
+  const db = await ensureDB();
+
+  const row: Omit<DBLogRow, "time"> = {
+    request_type: type,
+    model,
+    tokens,
+    cost: cost(model, tokens),
+  };
+
+  const stmt = db.prepare(`
+        INSERT INTO "log" (
+            "request_type",
+            "model",
+            "tokens",
+            "cost"
+        ) VALUES (
+            @request_type,
+            @model,
+            @tokens,
+            @cost
+        )
+    `);
+  const result = stmt.run(row);
+
+  if (result.changes !== 1) {
+    throw new Error(`Failed to create log entry`);
+  }
 }
