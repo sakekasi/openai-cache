@@ -11,8 +11,7 @@ import {
   getEmbeddingFromCache,
   getRequestFromCache,
 } from "./db";
-import { ModelName } from "./types";
-import { asyncForEachParallel, asyncMap, notNull } from "./utils";
+import { asyncForEachParallel, asyncMap, ModelName, notNull } from "./utils";
 
 const configuration = new Configuration({
   apiKey: config.openaiApiKey,

@@ -1,8 +1,7 @@
 import Database, { Database as IDatabase } from "better-sqlite3";
 import { config } from "./config";
 import md5 from "md5";
-import { Embedding, ModelName } from "./types";
-import { embeddingFromBuffer, embeddingToBuffer } from "./utils";
+import { embeddingFromBuffer, embeddingToBuffer, ModelName } from "./utils";
 
 const SCHEMA = `
 
