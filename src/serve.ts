@@ -13,6 +13,7 @@ export function makeServer(): express.Express {
   const maxTokensSchema = z.number().positive().int();
   const temperatureSchema = z.number().positive().gte(0).lte(2);
   const logprobsSchema = z.number().positive().int().lte(5);
+  const disableCacheSchema = z.boolean();
   const completeSchema = z.object({
     model: z.string().refine(isCompletionModelName),
     prompt: z.string().nonempty(),
@@ -43,16 +44,26 @@ export function makeServer(): express.Express {
         }
         return logprobsSchema.parse(parseInt(s));
       }),
+    disableCache: z
+      .string()
+      .optional()
+      .transform((s) => {
+        if (s == null) {
+          return undefined;
+        }
+        return disableCacheSchema.parse(s === "true");
+      }),
   });
   app.get("/complete", async (req, res, next) => {
     try {
-      const { model, prompt, maxTokens, temperature, logprobs } =
+      const { model, prompt, maxTokens, temperature, logprobs, disableCache } =
         completeSchema.parse(req.query);
 
       const completion = await complete(model, prompt, {
         maxTokens,
         temperature,
         logprobs,
+        disableCache,
       });
 
       res.send(completion);
@@ -72,11 +83,22 @@ export function makeServer(): express.Express {
       .nonempty()
       .transform((s) => JSON.parse(s))
       .refine((a) => Array.isArray(a) && a.every((s) => typeof s === "string")),
+    disableCache: z
+      .string()
+      .optional()
+      .transform((s) => {
+        if (s == null) {
+          return undefined;
+        }
+        return disableCacheSchema.parse(s === "true");
+      }),
   });
   app.get("/embed", async (req, res, next) => {
     try {
-      const { model, texts } = embedSchema.parse(req.query);
-      const embeddings = await embed(model, texts);
+      const { model, texts, disableCache } = embedSchema.parse(req.query);
+      const embeddings = await embed(model, texts, {
+        disableCache,
+      });
       res.send(embeddings);
     } catch (err) {
       if (err instanceof z.ZodError) {

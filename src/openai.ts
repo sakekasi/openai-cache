@@ -6,13 +6,20 @@ import {
 } from "openai";
 import { config } from "./config";
 import {
-    addEmbeddingToCache,
+  addEmbeddingToCache,
   addLogEntry,
   addRequestToCache,
   getEmbeddingFromCache,
   getRequestFromCache,
 } from "./db";
-import { asyncForEachParallel, asyncMap, CompletionModelName, EmbeddingModelName, ModelName, notNull } from "./utils";
+import {
+  asyncForEachParallel,
+  asyncMap,
+  CompletionModelName,
+  EmbeddingModelName,
+  ModelName,
+  notNull,
+} from "./utils";
 
 const configuration = new Configuration({
   apiKey: config.openaiApiKey,
@@ -30,7 +37,8 @@ export async function complete(
     maxTokens?: number;
     temperature?: number;
     logprobs?: number;
-  }
+    disableCache?: boolean;
+  } = {}
 ) {
   const request: MyCreateCompletionRequest = {
     model,
@@ -46,7 +54,12 @@ export async function complete(
     request.logprobs = options.logprobs;
   }
 
-  const cached = await getRequestFromCache(request);
+  if (options.disableCache ?? false) {
+    console.error("Disabling cache");
+  }
+
+  const cached =
+    options.disableCache ?? false ? null : await getRequestFromCache(request);
   if (cached != null) {
     const response: CreateCompletionResponse = JSON.parse(cached.response_json);
     return response;
@@ -60,7 +73,7 @@ export async function complete(
 
   addRequestToCache("completion", request, response.data);
   if (response.data.usage?.total_tokens != null) {
-    addLogEntry('completion', model, response.data.usage?.total_tokens);
+    addLogEntry("completion", model, response.data.usage?.total_tokens);
   }
 
   return response.data;
@@ -68,10 +81,21 @@ export async function complete(
 
 // createEmbedding
 // https://platform.openai.com/docs/api-reference/embeddings
-export async function embed(model: EmbeddingModelName, texts: string[]) {
-  const cachedEmbeddings = (
-    await asyncMap(texts, (text) => getEmbeddingFromCache(text, model))
-  ).filter(notNull);
+export async function embed(
+  model: EmbeddingModelName,
+  texts: string[],
+  options: { disableCache?: boolean } = {}
+) {
+  if (options.disableCache ?? false) {
+    console.error("Disabling cache");
+  }
+  
+  const cachedEmbeddings =
+    options.disableCache ?? false
+      ? []
+      : (
+          await asyncMap(texts, (text) => getEmbeddingFromCache(text, model))
+        ).filter(notNull);
 
   const uncachedEmbeddings = texts.filter(
     (text) => !cachedEmbeddings.some((e) => e.text === text)
@@ -99,7 +123,7 @@ export async function embed(model: EmbeddingModelName, texts: string[]) {
     addEmbeddingToCache(text, model, embedding)
   );
   if (response.data.usage?.total_tokens != null) {
-    addLogEntry('embedding', model, response.data.usage?.total_tokens);
+    addLogEntry("embedding", model, response.data.usage?.total_tokens);
   }
 
   return [...cachedEmbeddings, ...embeddings];

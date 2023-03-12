@@ -11,52 +11,63 @@ import {
 } from "./utils";
 
 const SCHEMA = `
-
+-- a log of all our requests, mainly used for cost tracking purposes
 CREATE TABLE IF NOT EXISTS "log" (
-  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
-  "time" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "uuid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(16)))),
+  "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   "request_type" TEXT NOT NULL,
   "tokens" INTEGER NOT NULL,
   "model" TEXT NOT NULL,
-  "cost" INTEGER NOT NULL
-);
+  "cost" INTEGER NOT NULL,
 
-CREATE INDEX IF NOT EXISTS "log_time" ON "log" ("time");
+  PRIMARY KEY("uuid")
+);
+CREATE INDEX IF NOT EXISTS "log_time" ON "log" ("created_at");
 CREATE INDEX IF NOT EXISTS "log_request_type" ON "log" ("request_type");
 CREATE INDEX IF NOT EXISTS "log_model" ON "log" ("model");
 
+-- a cache of requests. if some requests are batch requests, they may have their own table
 CREATE TABLE IF NOT EXISTS "request" (
-    "request_hash" TEXT NOT NULL UNIQUE,
-    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- using a uuid as our primary key allows us to have multiple requests with the same hash
+  -- this way, even if we decide to bypass the cache, we still save all the requests we make
+  "uuid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(16)))),
+  "request_hash" TEXT NOT NULL,
+  "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    "request_type" TEXT NOT NULL,
-    "request_json" TEXT NOT NULL,
-    "response_json" TEXT NOT NULL,
-    
-    "tokens" INTEGER NULL,
-    "model" TEXT NOT NULL,
-    "cost" INTEGER NOT NULL,
-    
-    PRIMARY KEY("request_hash")
+  "request_type" TEXT NOT NULL,
+  "request_json" TEXT NOT NULL,
+  "response_json" TEXT NOT NULL,
+  
+  "tokens" INTEGER NULL,
+  "model" TEXT NOT NULL,
+  "cost" INTEGER NOT NULL,
+  
+  PRIMARY KEY("uuid")
 );
-
-CREATE INDEX IF NOT EXISTS "request_created_at" ON "request" ("created_at");
+CREATE INDEX IF NOT EXISTS "request_request_hash" ON "request" ("request_hash");
+CREATE INDEX IF NOT EXISTS "request_time" ON "request" ("created_at");
 CREATE INDEX IF NOT EXISTS "request_request_type" ON "request" ("request_type");
+CREATE INDEX IF NOT EXISTS "request_model" ON "request" ("model");
+CREATE INDEX IF NOT EXISTS "request_most_recent_match" ON "request" ("request_hash", "created_at" DESC);
   
 CREATE TABLE IF NOT EXISTS "embedding" (
-    "text_hash" TEXT NOT NULL,
-    "model" TEXT NOT NULL,
-    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- using a uuid as our primary key allows us to have multiple embeddings with the same hash
+  -- this way, even if we decide to bypass the cache, we still save all the embeddings we make
+  "uuid" TEXT NOT NULL DEFAULT (lower(hex(randomblob(16)))),
+  "text_hash" TEXT NOT NULL,
+  "model" TEXT NOT NULL,
+  "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    "text" TEXT NOT NULL,
-    "embedding" BLOB NOT NULL,
+  "text" TEXT NOT NULL,
+  -- embeddings are arrays of floats
+  "embedding" BLOB NOT NULL,
 
-    PRIMARY KEY("text_hash", "model")
+  PRIMARY KEY("uuid")
 );
-
-CREATE INDEX IF NOT EXISTS "embedding_created_at" ON "embedding" ("created_at");
+CREATE INDEX IF NOT EXISTS "embedding_time" ON "embedding" ("created_at");
 CREATE INDEX IF NOT EXISTS "embedding_model" ON "embedding" ("model");
+CREATE INDEX IF NOT EXISTS "embedding_most_recent_match" ON "embedding" ("text_hash", "model", "created_at" DESC);
 
 `;
 
@@ -157,6 +168,8 @@ export async function getRequestFromCache(
   const stmt = db.prepare<{ request_hash: string }>(`
         SELECT * FROM "request"
         WHERE "request_hash" = @request_hash
+        ORDER BY "created_at" DESC
+        LIMIT 1
     `);
   const row: DBRequestRow = stmt.get({ request_hash: hash(request) });
 
@@ -225,6 +238,8 @@ export async function getEmbeddingFromCache(
   const stmt = db.prepare<{ text_hash: string; model: string }>(`
         SELECT * FROM "embedding"
         WHERE "text_hash" = @text_hash AND "model" = @model
+        ORDER BY "created_at" DESC
+        LIMIT 1
     `);
   const rows = stmt.all({ text_hash: md5(text), model });
 
@@ -247,7 +262,7 @@ export async function getEmbeddingFromCache(
 // #region log
 
 export interface DBLogRow {
-  time: string;
+  created_at: string;
   request_type: "completion" | "embedding";
   model: ModelName;
 
@@ -262,7 +277,7 @@ export async function addLogEntry(
 ) {
   const db = await ensureDB();
 
-  const row: Omit<DBLogRow, "time"> = {
+  const row: Omit<DBLogRow, "created_at"> = {
     request_type: type,
     model,
     tokens,
