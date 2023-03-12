@@ -1,4 +1,9 @@
-export const EMBEDDING_MODEL_NAMES = ["text-embedding-ada-002"] as const;
+export const EMBEDDING_MODEL_NAMES = [
+  "text-embedding-ada-002",
+  "text-embedding-babbage-001",
+  "text-embedding-curie-001",
+  "text-embedding-davinci-001",
+] as const;
 export type EmbeddingModelName = typeof EMBEDDING_MODEL_NAMES[number];
 export function isEmbeddingModelName(
   model: string
@@ -6,7 +11,12 @@ export function isEmbeddingModelName(
   return EMBEDDING_MODEL_NAMES.includes(model as EmbeddingModelName);
 }
 
-export const COMPLETION_MODEL_NAMES = ["text-ada-001"] as const;
+export const COMPLETION_MODEL_NAMES = [
+  "text-ada-001",
+  "text-babbage-001",
+  "text-curie-001",
+  "text-davinci-001",
+] as const;
 export type CompletionModelName = typeof COMPLETION_MODEL_NAMES[number];
 export function isCompletionModelName(
   model: string
@@ -15,8 +25,8 @@ export function isCompletionModelName(
 }
 
 export const MODEL_NAMES = [
-    ...EMBEDDING_MODEL_NAMES,
-    ...COMPLETION_MODEL_NAMES,
+  ...EMBEDDING_MODEL_NAMES,
+  ...COMPLETION_MODEL_NAMES,
 ] as const;
 export type ModelName = typeof MODEL_NAMES[number];
 export function isModelName(model: string): model is ModelName {
@@ -26,6 +36,12 @@ export function isModelName(model: string): model is ModelName {
 export const MODEL_COSTS_PER_1K_TOKENS = {
   "text-embedding-ada-002": 0.0004,
   "text-ada-001": 0.0004,
+  "text-embedding-babbage-001": 0.0005,
+  "text-babbage-001": 0.0005,
+  "text-embedding-curie-001": 0.002,
+  "text-curie-001": 0.002,
+  "text-embedding-davinci-001": 0.02,
+  "text-davinci-001": 0.02,
 } as const;
 
 export type Embedding = number[] | Float32Array;
